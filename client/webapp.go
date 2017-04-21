@@ -53,14 +53,15 @@ func main() {
 		extraCoordinates[0] = fmt.Sprintf("%s:%d", apiHost, apiPort)
 
 		/* define the server handlers */
+
 		// dynamic request handlers: html
-		http.HandleFunc("/", ui.Redirect("/scanned/"))
+		http.HandleFunc("/", ui.Redirect("/stulist/"))
 		http.HandleFunc("/browser", ui.UnsupportedBrowserHandler(templatesFolder)) //OK
 		http.HandleFunc("/shutdown/", ui.ShutdownClientHandler()) //OK
-		http.HandleFunc("/scanned/", ui.MakeHTMLHandler(ui.ScannedItems, dbCoordinates))
+		http.HandleFunc("/stulist/", ui.MakeHTMLHandler(ui.ScannedItems, dbCoordinates))
 		http.HandleFunc("/delete/", ui.MakeHTMLHandler(ui.DeleteItems, dbCoordinates))
-		http.HandleFunc("/favorite/", ui.MakeHTMLHandler(ui.FavoriteItems, dbCoordinates))
-		http.HandleFunc("/unfavorite/", ui.MakeHTMLHandler(ui.UnfavoriteItems, dbCoordinates))
+		http.HandleFunc("/submit/", ui.MakeHTMLHandler(ui.FavoriteItems, dbCoordinates))
+		http.HandleFunc("/unsubmit/", ui.MakeHTMLHandler(ui.UnfavoriteItems, dbCoordinates))
 		http.HandleFunc("/input/", ui.MakeHTMLHandler(ui.InputUnknownItem, dbCoordinates, extraCoordinates...))
 
 		// ajax

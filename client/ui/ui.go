@@ -9,7 +9,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/Banrai/PiScan/client/database"
+	"github.com/RogerZhangHS/PiScan/client/database"
 	"github.com/mxk/go-sqlite/sqlite3"
 	"html/template"
 	"io/ioutil"
@@ -96,10 +96,9 @@ type AjaxAck struct {
 
 /* HTML template structs */
 type ActiveTab struct {
-	Scanned   bool
-	Favorites bool
-	Account   bool
-	ShowTabs  bool
+	Scanned    bool
+	Submission bool
+	ShowTabs   bool
 }
 
 type Action struct {
@@ -112,15 +111,14 @@ type StudentPage struct {
 	Title       string
 	ActiveTab   *ActiveTab
 	Actions     []*Action
-	Items       []*database.Item
-	Account     *database.Account
+	Students       []*database.Student
 	Scanned     bool
 	PageMessage string
 }
 
 type StudentForm struct {
 	StuName      string
-	Item         *database.Item
+	Item         *database.Student
 	CancelUrl    string
 	FormError    string
 	FormMessage  string
@@ -129,10 +127,10 @@ type StudentForm struct {
 
 /* General db access functions */
 
-// getStudents returns a list of scanned or favorited students, and the correct
+// getStudents returns a list of all students and submitted students, and the correct
 // corresponding options for the HTML page template
-func getStudents(w http.ResponseWriter, r *http.Request, dbCoords database.ConnCoordinates, favorites bool) {
-	// attempt to connect to the db
+func getStudents(w http.ResponseWriter, r *http.Request, dbCoords database.ConnCoordinates, submitted bool) {
+	// 尝试连接至本地数据库
 	db, err := database.InitializeDB(dbCoords)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -140,67 +138,49 @@ func getStudents(w http.ResponseWriter, r *http.Request, dbCoords database.ConnC
 	}
 	defer db.Close()
 
-	// get the Account for this request
-	acc, accErr := database.GetDesignatedAccount(db)
-	if accErr != nil {
-		http.Error(w, accErr.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	// define the appropriate fetch item function
-	fetch := func(db *sqlite3.Conn, acc *database.Account) ([]*database.Item, error) {
-		if favorites {
-			return database.GetFavoriteItems(db, acc)
+	// 根据具体情况确定获取数据库内条目的函数
+	fetch := func(db *sqlite3.Conn) ([]*database.Student, error) {
+		if submitted {
+			return database.GetSignedStudents(db)
 		} else {
-			return database.GetItems(db, acc)
+			return database.GetAllStudents(db)
 		}
 	}
 
-	// get all the desired items for this Account
-	items := make([]*database.Item, 0)
-	itemList, itemsErr := fetch(db, acc)
-	if itemsErr != nil {
-		http.Error(w, itemsErr.Error(), http.StatusInternalServerError)
+	// get all the desired students for this Account
+	students := make([]*database.Student, 0)
+	studentsList, studentsErr := fetch(db)
+	if studentsErr != nil {
+		http.Error(w, studentsErr.Error(), http.StatusInternalServerError)
 		return
 	}
-	for _, item := range itemList {
-		items = append(items, item)
+	for _, student := range studentsList {
+		students = append(students, student)
 	}
 
 	// actions
 	actions := make([]*Action, 0)
-	// commerce options
-	for _, vendor := range database.GetAllVendors(db) {
-		actions = append(actions, &Action{Link: fmt.Sprintf("/buy%s/", vendor.VendorId), Icon: "fa fa-shopping-cart", Action: fmt.Sprintf("Buy from %s", vendor.DisplayName)})
-	}
-	if acc.Email != database.ANONYMOUS_EMAIL {
-		actions = append(actions, &Action{Link: "/email/", Icon: "fa fa-envelope", Action: "Email to me"})
-	}
-	if favorites {
-		actions = append(actions, &Action{Link: "/unfavorite/", Icon: "fa fa-star-o", Action: "Remove from favorites"})
+	if submitted {
+		actions = append(actions, &Action{Link: "/unsubmit/", Icon: "fa fa-star-o", Action: "将学生从提交名单中移除"})
 	} else {
-		actions = append(actions, &Action{Link: "/favorite/", Icon: "fa fa-star", Action: "Add to favorites"})
+		actions = append(actions, &Action{Link: "/submit/", Icon: "fa fa-star", Action: "将学生加入提交名单中"})
 	}
-	actions = append(actions, &Action{Link: "/delete/", Icon: "fa fa-trash", Action: "Delete"})
+	actions = append(actions, &Action{Link: "/delete/", Icon: "fa fa-trash", Action: "删除该学生"})
 
 	// define the page title
 	var titleBuffer bytes.Buffer
-	if favorites {
-		titleBuffer.WriteString("Favorite")
+	if submitted {
+		titleBuffer.WriteString("已提交 | ")
 	} else {
-		titleBuffer.WriteString("Scanned")
+		titleBuffer.WriteString("全部 | ")
 	}
-	titleBuffer.WriteString(" Item")
-	if len(itemList) != 1 {
-		titleBuffer.WriteString("s")
-	}
+	titleBuffer.WriteString(" 学生")
 
 	p := &StudentPage{Title: titleBuffer.String(),
-		Scanned:         !favorites,
-		ActiveTab:       &ActiveTab{Scanned: !favorites, Favorites: favorites, Account: false, ShowTabs: true},
+		Scanned:         !submitted,
+		ActiveTab:       &ActiveTab{Scanned: !submitted, Submission: submitted, ShowTabs: true},
 		Actions:         actions,
-		Account:         acc,
-		Items:           items}
+		Students:        students}
 
 	// check for any message to display on page load
 	r.ParseForm()
@@ -217,18 +197,18 @@ func getStudents(w http.ResponseWriter, r *http.Request, dbCoords database.ConnC
 // deleteItem attempts to lookup and remove the Item for the Account and
 // Item.Id combination, returning a bool on success/fail, and the db lookup
 // error (if any)
-func deleteItem(db *sqlite3.Conn, acc *database.Account, id int64) (bool, error) {
+func deleteItem(db *sqlite3.Conn, stuid string) (bool, error) {
 	result := false
 
-	item, itemErr := database.GetSingleItem(db, acc, id)
-	if itemErr == nil {
-		if item.Id == id {
-			item.Delete(db)
+	student, studentErr := database.GetSingleItem(db, stuid)
+	if studentErr == nil {
+		if student.stuid == stuid {
+			database.Delete(db,stuid)
 			result = true
 		}
 	}
 
-	return result, itemErr
+	return result, studentErr
 }
 
 // processItems fetches all the Items for the given Account, and the compares

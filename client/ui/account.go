@@ -73,7 +73,7 @@ func EditAccount(w http.ResponseWriter, r *http.Request, dbCoords database.ConnC
 	}
 
 	form := &AccountForm{Title: "My Account",
-		ActiveTab:    &ActiveTab{Scanned: false, Favorites: false, Account: true, ShowTabs: true},
+		ActiveTab:    &ActiveTab{Scanned: false, Submission: false, Account: true, ShowTabs: true},
 		Account:      acc,
 		CancelUrl:    cancelUrl,
 		Unregistered: regStatus}
