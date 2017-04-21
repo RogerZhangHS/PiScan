@@ -18,11 +18,6 @@ import (
 	"net/url"
 )
 
-const (
-	apiServerHost = "https://api.saruzai.com"
-	apiServerPort = 443
-)
-
 func main() {
 	var (
 		device, apiServer, sqlitePath, sqliteFile, sqliteTablesDefinitionPath string
@@ -30,13 +25,12 @@ func main() {
 	)
 
 	flag.StringVar(&device, "device", scanner.SCANNER_DEVICE, fmt.Sprintf("The '/dev/input/event' device associated with your scanner (defaults to '%s')", scanner.SCANNER_DEVICE))
-	flag.StringVar(&apiServer, "apiHost", apiServerHost, fmt.Sprintf("The hostname or IP address of the API server (defaults to '%s')", apiServerHost))
-	flag.IntVar(&apiPort, "apiPort", apiServerPort, fmt.Sprintf("The API server port (defaults to '%d')", apiServerPort))
 	flag.StringVar(&sqlitePath, "sqlitePath", database.SQLITE_PATH, fmt.Sprintf("Path to the sqlite file (defaults to '%s')", database.SQLITE_PATH))
 	flag.StringVar(&sqliteFile, "sqliteFile", database.SQLITE_FILE, fmt.Sprintf("The sqlite database file (defaults to '%s')", database.SQLITE_FILE))
 	flag.StringVar(&sqliteTablesDefinitionPath, "sqliteTables", "", fmt.Sprintf("Path to the sqlite database definitions file, %s, (use only if creating the client db for the first time)", database.TABLE_SQL_DEFINITIONS))
 	flag.Parse()
 
+	// 连接到本地sqlite数据库
 	if len(sqliteTablesDefinitionPath) > 0 {
 		// this is a request to create the client db for the first time
 		initDb, initErr := database.InitializeDB(database.ConnCoordinates{sqlitePath, sqliteFile, sqliteTablesDefinitionPath})
@@ -58,6 +52,11 @@ func main() {
 			log.Fatal(dbErr)
 		}
 		defer db.Close()
+
+		processScanFn := func(barcode string) {
+			// 该函数过程为获取barcode 查询本地数据库中是否存在这些barcode 并且做出相应的反应
+			student, err := db.Query()
+		}
 
 		processScanFn := func(barcode string) {
 			// Lookup the barcode in the API server

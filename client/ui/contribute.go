@@ -41,9 +41,9 @@ func InputUnknownItem(w http.ResponseWriter, r *http.Request, dbCoords database.
 	}
 
 	// prepare the html page response
-	form := &ItemForm{Title: "Contribute Product Information",
-		CancelUrl:    HOME_URL,
-		Unregistered: (acc.Email == database.ANONYMOUS_EMAIL)}
+	form := &StudentForm{StuName: "Contribute Product Information",
+		CancelUrl:            HOME_URL,
+		Unregistered:         (acc.Email == database.ANONYMOUS_EMAIL)}
 
 	//lookup the item from the request id
 	// and show the input form (if a GET)

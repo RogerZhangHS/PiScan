@@ -108,7 +108,7 @@ type Action struct {
 	Action string
 }
 
-type ItemsPage struct {
+type StudentPage struct {
 	Title       string
 	ActiveTab   *ActiveTab
 	Actions     []*Action
@@ -118,8 +118,8 @@ type ItemsPage struct {
 	PageMessage string
 }
 
-type ItemForm struct {
-	Title        string
+type StudentForm struct {
+	StuName      string
 	Item         *database.Item
 	CancelUrl    string
 	FormError    string
@@ -129,9 +129,9 @@ type ItemForm struct {
 
 /* General db access functions */
 
-// getItems returns a list of scanned or favorited products, and the correct
+// getStudents returns a list of scanned or favorited students, and the correct
 // corresponding options for the HTML page template
-func getItems(w http.ResponseWriter, r *http.Request, dbCoords database.ConnCoordinates, favorites bool) {
+func getStudents(w http.ResponseWriter, r *http.Request, dbCoords database.ConnCoordinates, favorites bool) {
 	// attempt to connect to the db
 	db, err := database.InitializeDB(dbCoords)
 	if err != nil {
@@ -195,12 +195,12 @@ func getItems(w http.ResponseWriter, r *http.Request, dbCoords database.ConnCoor
 		titleBuffer.WriteString("s")
 	}
 
-	p := &ItemsPage{Title: titleBuffer.String(),
-		Scanned:   !favorites,
-		ActiveTab: &ActiveTab{Scanned: !favorites, Favorites: favorites, Account: false, ShowTabs: true},
-		Actions:   actions,
-		Account:   acc,
-		Items:     items}
+	p := &StudentPage{Title: titleBuffer.String(),
+		Scanned:         !favorites,
+		ActiveTab:       &ActiveTab{Scanned: !favorites, Favorites: favorites, Account: false, ShowTabs: true},
+		Actions:         actions,
+		Account:         acc,
+		Items:           items}
 
 	// check for any message to display on page load
 	r.ParseForm()
@@ -284,13 +284,13 @@ func processItems(w http.ResponseWriter, r *http.Request, dbCoords database.Conn
 
 /* HTML Response Functions (via templates) */
 
-func renderItemListTemplate(w http.ResponseWriter, p *ItemsPage) {
+func renderItemListTemplate(w http.ResponseWriter, p *StudentPage) {
 	if TEMPLATES_INITIALIZED {
 		ITEM_LIST_TEMPLATES.Execute(w, p)
 	}
 }
 
-func renderItemEditTemplate(w http.ResponseWriter, f *ItemForm) {
+func renderItemEditTemplate(w http.ResponseWriter, f *StudentForm) {
 	if TEMPLATES_INITIALIZED {
 		ITEM_EDIT_TEMPLATES.Execute(w, f)
 	}
@@ -308,13 +308,13 @@ func InitializeTemplates(folder string) {
 // ScannedItems returns all the products scanned, favorited or not, barcode
 // lookup successful or not
 func ScannedItems(w http.ResponseWriter, r *http.Request, db database.ConnCoordinates, opts ...interface{}) {
-	getItems(w, r, db, false)
+	getStudents(w, r, db, false)
 }
 
 // FavoritedItems returns all the products scanned and favorited by this
 // Account
 func FavoritedItems(w http.ResponseWriter, r *http.Request, db database.ConnCoordinates, opts ...interface{}) {
-	getItems(w, r, db, true)
+	getStudents(w, r, db, true)
 }
 
 // DeleteItems accepts a form post of one or more Item.Id values, and

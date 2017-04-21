@@ -7,49 +7,10 @@
 -- `account` defines basic end-user information, corresponding to the
 -- account table in the server database
 
-CREATE TABLE IF NOT EXISTS account (
-	id       integer primary key AUTOINCREMENT,
-	email    text NOT NULL,
-	api_code text NOT NULL,
-	UNIQUE(email)
+CREATE TABLE IF NOT EXISTS student (
+  name text NOT NULL,
+  stuid integer PRIMARY KEY,
+  submission_status boolean DEFAULT 0,
+  submission_time integer DEFAULT 0,
+  UNIQUE(name, stuid)
 );
-
--- `product` defines the items scanned, edited (when the barcode lookup
--- resulted in no matches), and favorited by a given end-user
-
-CREATE TABLE IF NOT EXISTS product (
-	id           integer primary key AUTOINCREMENT,
-	barcode      text NOT NULL,
-	product_desc text, -- can be null: means the scanned item is unknown
-	product_ind  integer DEFAULT 0, -- to distinguish multiple products with the same barcode
-	is_favorite  integer DEFAULT 0, -- 0 = false, 1 = true
-	is_edit      integer DEFAULT 0, -- 0 = false, 1 = true
-	posted       datetime DEFAULT (datetime('now')),
-	account      integer REFERENCES account(id),
-	UNIQUE(barcode, product_desc)
-); 
-
--- `vendor` defines the list of commercial vendors for products.
--- vendor_id is the description/result of the vendor's API, and
--- display_name is the string to use in the UI.
-
-CREATE TABLE IF NOT EXISTS vendor (
-	id           integer primary key AUTOINCREMENT,
-	vendor_id    text NOT NULL,
-	display_name text NOT NULL,
-	UNIQUE(vendor_id)
-);
-
--- `product_availability` defines where a given product can be purchased,
--- according to the commerce-related tables in the server database (the
--- unique list of vendor ids provides the "Buy from ..." action options,
--- and the product_codes define how that vendor references them)
-
-CREATE TABLE IF NOT EXISTS product_availability (
-	id           integer primary key AUTOINCREMENT,
-	product_code text NOT NULL,
-	product      integer REFERENCES product(id),
-	vendor       integer REFERENCES vendor(id),
-	UNIQUE(product_code, product, vendor)
-);
-

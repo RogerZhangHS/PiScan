@@ -13,6 +13,7 @@
 //
 // https://github.com/gvalkov/golang-evdev
 
+
 package scanner
 
 import (
