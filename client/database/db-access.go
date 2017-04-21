@@ -30,7 +30,7 @@ const (
 
 	// Prepared Statements
 	// Students
-	ADD_STUDENT          = "insert into Student (stuid, name, submission_status, submission_time) values ($b, $n, $i, $e)" //EDITED
+	ADD_STUDENT          = "insert into Student (stuid, name) values ($b, $n)" //EDITED
 	UPDATE_STUDENT       = "update Student set stuid = $d, name = $n where stuid = $i" //EDITED
 	GET_EXISTING_STUDENT = "select stuid from Student where stuid = $b" //EDITED
 	DELETE_STUDENT       = "delete from Student where stuid = $i"
@@ -115,19 +115,17 @@ func getExistingItem(db *sqlite3.Conn, barcode string) int64 {
 	return rowid
 }
 
-func (i *Student) Add(db *sqlite3.Conn) (int64, error) {
-	// insert the Item object
+func (i *Student) Add(db *sqlite3.Conn, stuid, name string) (int64, error) {
+	// 新增一个学生
 
-	// but first check if it's a duplicate or not
+	// 首先检查是否与现存数据库内容重复
 	itemPk := getExistingItem(db, i.stuid)
 	if itemPk != BAD_PK {
 		return itemPk, nil
 	}
 
 	args := sqlite3.NamedArgs{"$b": i.stuid,
-		"$n": i.name,
-		"$i": i.submission_status,
-		"$e": i.submission_time}
+		"$n": i.name}
 	result := db.Exec(ADD_STUDENT, args)
 	//TODO: INTERPRET THE FOLLOWING CODE
 	if result == nil {
@@ -138,7 +136,7 @@ func (i *Student) Add(db *sqlite3.Conn) (int64, error) {
 	return BAD_PK, result
 }
 
-func (i *Student) Update(db *sqlite3.Conn, original_stuid string) error {
+func (i *Student) Update(db *sqlite3.Conn, original_stuid, stuid, name string) error {
 	// 更新学生的个人信息
 	args := sqlite3.NamedArgs{"$d": i.stuid,
 		"$n": i.name,
@@ -146,19 +144,19 @@ func (i *Student) Update(db *sqlite3.Conn, original_stuid string) error {
 	return db.Exec(UPDATE_STUDENT, args)
 }
 
-func (i *Student) Delete(db *sqlite3.Conn) error {
+func (i *Student) Delete(db *sqlite3.Conn, stuid string) error {
 	// 删除学生的个人信息
 	args := sqlite3.NamedArgs{"$i": i.stuid}
 	return db.Exec(DELETE_STUDENT, args)
 }
 
-func (i *Student) Sign(db *sqlite3.Conn) error {
+func (i *Student) Sign(db *sqlite3.Conn, stuid string) error {
 	// 更改上交作业的状态为 True
 	args := sqlite3.NamedArgs{"$i": i.stuid}
 	return db.Exec(SIGN_STUDENT, args)
 }
 
-func (i *Student) Unsign(db *sqlite3.Conn) error {
+func (i *Student) Unsign(db *sqlite3.Conn, stuid string) error {
 	// 更改上交作业的状态为 False
 	args := sqlite3.NamedArgs{"$i": i.stuid}
 	return db.Exec(UNSIGN_STUDENT, args)

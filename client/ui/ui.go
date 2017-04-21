@@ -52,7 +52,7 @@ var (
 	TEMPLATES_INITIALIZED = false
 )
 
-// Use this to redirect one request to another target (string)
+// 用来进行重定向的函数 (string)
 func Redirect(target string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, target, http.StatusFound)

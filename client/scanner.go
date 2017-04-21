@@ -9,9 +9,8 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/Banrai/PiScan/client/database"
-	"github.com/Banrai/PiScan/scanner"
-	"github.com/Banrai/PiScan/server/commerce"
+	"github.com/RogerZhangHS/PiScan/client/database"
+	"github.com/RogerZhangHS/PiScan/scanner"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -20,8 +19,7 @@ import (
 
 func main() {
 	var (
-		device, apiServer, sqlitePath, sqliteFile, sqliteTablesDefinitionPath string
-		apiPort                                                               int
+		device, sqlitePath, sqliteFile, sqliteTablesDefinitionPath string
 	)
 
 	flag.StringVar(&device, "device", scanner.SCANNER_DEVICE, fmt.Sprintf("The '/dev/input/event' device associated with your scanner (defaults to '%s')", scanner.SCANNER_DEVICE))
@@ -55,78 +53,8 @@ func main() {
 
 		processScanFn := func(barcode string) {
 			// 该函数过程为获取barcode 查询本地数据库中是否存在这些barcode 并且做出相应的反应
-			student, err := db.Query()
-		}
-
-		processScanFn := func(barcode string) {
-			// Lookup the barcode in the API server
-			apiResponse, apiErr := http.PostForm(fmt.Sprintf("%s:%d/lookup", apiServer, apiPort), url.Values{"barcode": {barcode}})
-			if apiErr != nil {
-				fmt.Println(fmt.Sprintf("API access error: %s", apiErr))
-				return
-			}
-			rawJson, _ := ioutil.ReadAll(apiResponse.Body)
-			apiResponse.Body.Close()
-
-			var products []*commerce.API
-			err := json.Unmarshal(rawJson, &products)
-			if err != nil {
-				fmt.Println(fmt.Sprintf("API barcode lookup error: %s", err))
-				return
-			}
-
-			// get the Account for this request
-			acc, accErr := database.GetDesignatedAccount(db)
-			if accErr != nil {
-				fmt.Println(fmt.Sprintf("Client db account access error: %s", accErr))
-				return
-			}
-
-			// get the list of current Vendors according to the Pi client database
-			// and map them according to their API vendor id string
-			vendors := make(map[string]*database.Vendor)
-			for _, v := range database.GetAllVendors(db) {
-				vendors[v.VendorId] = v
-			}
-
-			productsFound := 0
-			for i, product := range products {
-				v, exists := vendors[product.Vendor]
-				if !exists {
-					if len(product.Vendor) > 0 {
-						amazonId, amazonErr := database.AddVendor(db, product.Vendor, "Amazon")
-						if amazonErr == nil {
-							v = database.GetVendor(db, amazonId)
-							vendors[product.Vendor] = v
-							exists = true
-						}
-					}
-				}
-
-				if len(product.ProductName) > 0 {
-					// convert the commerce.API struct into a database.Item
-					// so that it can be logged into the Pi client sqlite db
-					item := database.Item{
-						Index:           int64(i),
-						Barcode:         barcode,
-						Desc:            product.ProductName,
-						UserContributed: false}
-					pk, insertErr := item.Add(db, acc)
-					if insertErr == nil {
-						// also log the vendor/product code combination
-						if exists {
-							database.AddVendorProduct(db, product.SKU, v.Id, pk)
-						}
-					}
-					productsFound += 1
-				}
-			}
-
-			if productsFound == 0 {
-				// add it to the Pi client sqlite db as "unknown"
-				// so that it can be manually edited/input
-				unknownItem := database.Item{Index: 0, Barcode: barcode}
-				unknownItem.Add(db, acc)
+			if database.getExistingItem(db, barcode) != -1 {
+				database.Sign(db, barcode)
 			}
 		}
 
